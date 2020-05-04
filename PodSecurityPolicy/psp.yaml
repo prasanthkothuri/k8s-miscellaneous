@@ -1,0 +1,108 @@
+# create podsecuritypolicy
+apiVersion: extensions/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: spark-psp
+spec:
+  privileged: false
+  allowPrivilegeEscalation: false
+  allowedCapabilities:
+  - '*'
+  volumes:
+  - '*'
+  allowedHostPaths:
+  - pathPrefix: "/var/eos"
+  hostNetwork: false
+  hostPorts:
+  - min: 0
+    max: 65535
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'RunAsAny'
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+---
+# create namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pkothuri
+--- 
+# create service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spark
+  namespace: pkothuri
+secrets:
+- name: spark-token-56xzw
+--- 
+# cluster role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spark-cluster-role-pkothuri
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - "nodes"
+  - "namespaces"
+  verbs:
+  - "list"
+- apiGroups:
+  - "policy"
+  resources:
+  - "podsecuritypolicies"
+  verbs:
+  - "use"
+  resourceNames:
+  - spark-psp
+--- 
+# cluster role binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spark-cluster-role-binding-pkothuri
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: spark-cluster-role-pkothuri
+subjects:
+- kind: ServiceAccount
+  name: spark
+  namespace: pkothuri
+---
+# create role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spark-role
+  namespace: pkothuri
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - "*"
+  verbs:
+  - "*"
+---
+# create role binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: spark-role-binding
+  namespace: pkothuri
+subjects:
+- kind: ServiceAccount
+  name: spark
+  namespace: pkothuri
+roleRef:
+  kind: Role
+  name: spark-role
+  apiGroup: rbac.authorization.k8s.io
